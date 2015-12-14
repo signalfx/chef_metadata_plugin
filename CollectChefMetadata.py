@@ -33,9 +33,9 @@ class Metadata(object):
 	handler.setFormatter(formatter)
 	logger.addHandler(handler)
 
-	def __init__(self, ACCESS_TOKEN):
+	def __init__(self, SIGNALFX_API_TOKEN):
 		self.api = autoconfigure()
-		self.ACCESS_TOKEN = ACCESS_TOKEN
+		self.SIGNALFX_API_TOKEN = SIGNALFX_API_TOKEN
 
 	def run(self):
 		"""
@@ -71,7 +71,7 @@ class Metadata(object):
 		If there are any updates, send those changes to Signalfx
 		"""
 		headers = {
-			'X-SF-Token':self.ACCESS_TOKEN,
+			'X-SF-Token':self.SIGNALFX_API_TOKEN,
 		}
 		resp = self.getSignalfxObjectId(nodeInformation, headers)
 		if len(resp.json()['rs']) == 0:
@@ -159,7 +159,7 @@ class Metadata(object):
 		"""
 		Exit from the program with a message on the console
 		"""
-		print("Error logged into the log file! Exiting...");
+		print("Error Occured: logged into the log file! Exiting...");
 		sys.exit(1)
 
 	def apiGetRequest(self, endpoint):
@@ -237,29 +237,29 @@ class Metadata(object):
 
 def main(argv):
 	"""
-	If a valid access token is given, execute Metadata.run() and
+	If non empty SIGNALFX_API_TOKEN token is given, execute Metadata.run() and
 	sleep for Metadata.SLEEP_DURATION in a loop
 	"""
 	FILE_NAME = sys.argv[0]
 	try:
-		opts, argv = getopt.getopt(argv, "ht:", ["accessToken="])
+		opts, argv = getopt.getopt(argv, "ht:", ["SIGNALFX_API_TOKEN="])
 	except getopt.GetoptError:
-		print 'Usage: python '+FILE_NAME+' -t <ACCESS_TOKEN>'
+		print 'Usage: python '+FILE_NAME+' -t <SIGNALFX_API_TOKEN>'
 		sys.exit(2)
 	for opt, arg in opts:
 		if opt == '-h':
-			print 'Usage: python '+FILE_NAME+' -t <ACCESS_TOKEN>'
+			print 'Usage: python '+FILE_NAME+' -t <SIGNALFX_API_TOKEN>'
 			sys.exit()
-		elif opt in ["-t", "accessToken"]:
-			ACCESS_TOKEN = arg
-	if ACCESS_TOKEN:
-		m = Metadata(ACCESS_TOKEN)
+		elif opt in ["-t", "SIGNALFX_API_TOKEN"]:
+			SIGNALFX_API_TOKEN = arg
+	if SIGNALFX_API_TOKEN:
+		m = Metadata(SIGNALFX_API_TOKEN)
 		while True:
 			m.run()
 			sleep(m.SLEEP_DURATION)
 	else:
-		print 'Enter valid Access Token!'
-		print 'Usage: python '+FILE_NAME+' -t <ACCESS_TOKEN>'
+		print 'Enter valid SIGNALFX API TOKEN!'
+		print 'Usage: python '+FILE_NAME+' -t <SIGNALFX_API_TOKEN>'
 		sys.exit(2)
 
 
