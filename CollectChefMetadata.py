@@ -30,8 +30,7 @@ class Metadata(object):
                  SIGNALFX_REST_API,
                  PICKLE_FILE,
                  SLEEP_DURATION,
-                 LOG_HANDLER
-            ):
+                 LOG_HANDLER):
         self.api = autoconfigure()
         self.SIGNALFX_API_TOKEN = SIGNALFX_API_TOKEN
         self.CONFIG_FILE = CONFIG_FILE
@@ -184,7 +183,8 @@ class Metadata(object):
         """
         Exit from the program with a message on the console
         """
-        print("Error Occured: logged into " + DEFAULT_LOG_FILE + "! Exiting...")
+        print("Error Occured: logged into " + DEFAULT_LOG_FILE +
+              "! Exiting...")
         sys.exit(1)
 
     def apiGetRequest(self, endpoint):
@@ -249,7 +249,8 @@ class Metadata(object):
             try:
                 tempValue = tempValue[token]
             except Exception:
-                self.logger.error('Invalid attribute ' + attribute + ' is listed in '
+                self.logger.error('Invalid attribute ' + attribute +
+                                  ' is listed in '
                                   + self.CONFIG_FILE, exc_info=True)
                 return None
         if isinstance(tempValue, dict):
@@ -269,21 +270,22 @@ def getArgumentParser():
     return: argparse.ArgumentParser() object
     """
     parser = argparse.ArgumentParser(description='Collects the metadata ' +
-                                     'about Chef nodes and forwards it to SignalFx.', add_help=True)
+                                     'about Chef nodes and forwards' +
+                                     'it to SignalFx.', add_help=True)
 
     parser.add_argument('--env-variable-name', action='store',
                         dest='ENV_VARIABLE_NAME',
                         default=DEFAULT_ENV_VARIABLE_NAME,
-                        help='Set SIGNALFX_API_TOKEN with your SIGNALFX_API_TOKEN as value ' +
-                        'in your environment variables. ' +
-                        'You can change the environment variable name to look for, ' +
-                        'using this option.' +
+                        help='Set SIGNALFX_API_TOKEN with your ' +
+                        'SIGNALFX_API_TOKEN as value in your environment ' +
+                        'variables. You can change the environment variable ' +
+                        'name to look for, using this option.' +
                         'Default is ' + DEFAULT_ENV_VARIABLE_NAME, type=str)
     parser.add_argument('--config-file', action='store',
                         dest='CONFIG_FILE',
                         default=DEFAULT_CONFIG_FILE,
-                        help='File with the list of attributes to be attached to ' +
-                        '\'ChefUniqueId\' on SignalFx. ' +
+                        help='File with the list of attributes to be ' +
+                        'attached to \'ChefUniqueId\' on SignalFx. ' +
                         'Default is ' + DEFAULT_CONFIG_FILE, type=str)
     parser.add_argument('--log-file', action='store',
                         dest='LOG_FILE',
@@ -296,8 +298,9 @@ def getArgumentParser():
                         choices=('stdout', 'logfile'),
                         help='Choose between \'stdout\' and \'logfile\'' +
                         'to redirect log messages. ' +
-                        'Use --log-file to change the default log file location' +
-                        'Default to this option is ' + DEFAULT_LOG_HANDLER, type=str)
+                        'Use --log-file to change the default log file ' +
+                        ' location. Default to this option is ' +
+                        DEFAULT_LOG_HANDLER, type=str)
     parser.add_argument('--signalfx-rest-api', action='store',
                         dest='SIGNALFX_REST_API',
                         default=DEFAULT_SIGNALFX_REST_API,
@@ -306,8 +309,9 @@ def getArgumentParser():
     parser.add_argument('--pickle-file', action='store',
                         dest='PICKLE_FILE',
                         default=DEFAULT_PICKLE_FILE,
-                        help='Pickle file to store the last retrieved metadata. ' +
-                        'Default is ' + DEFAULT_PICKLE_FILE, type=str)
+                        help='Pickle file to store the last retrieved ' +
+                        'metadata. Default is ' + DEFAULT_PICKLE_FILE,
+                        type=str)
     parser.add_argument('--sleep-duration', action='store',
                         dest='SLEEP_DURATION',
                         default=DEFAULT_SLEEP_DURATION,
@@ -315,9 +319,10 @@ def getArgumentParser():
                         'Default is ' + str(DEFAULT_SLEEP_DURATION), type=int)
     parser.add_argument('--use-cron', action="store_true",
                         default=False,
-                        help='use this option if you want to run the program ' +
-                        'using Cron. Default is False, meaning that program will ' +
-                        'use sleep(SLEEP_DURATION) instead of cron')
+                        help='use this option if you want to run the ' +
+                        ' program using Cron. Default is False, meaning ' +
+                        'that program will use sleep(SLEEP_DURATION) ' +
+                        'instead of cron')
 
     return parser
 
