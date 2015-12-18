@@ -2,7 +2,11 @@ machine:
   python:
     version: 2.7.8
 
+dependencies:
+  pre:
+    - gem install mdl
+
 test:
   pre:
-    - mdl --warnings README.md
+    - mdl --warnings *.md
     - flake8 *.py
