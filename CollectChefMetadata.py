@@ -16,16 +16,12 @@ DEFAULT_SIGNALFX_REST_API = 'http://lab-api.corp.signalfuse.com:8080'
 DEFAULT_PICKLE_FILE = 'pk_metadata.pk'
 DEFAULT_SLEEP_DURATION = 60
 DEFAULT_ENV_VARIABLE_NAME = 'SIGNALFX_API_TOKEN'
+DEFAULT_LOG_HANDLER = 'logfile'
 
 class Metadata(object):
     """
     Collect metadata of a chef node
     """
-    			# IN SECONDS
-    propertyNamePattern = re.compile('^[a-zA-Z_][a-zA-Z0-9_-]*$')
-    config = []
-    organization = ''
-    nodes_metadata = []
 
     def __init__(self,
             SIGNALFX_API_TOKEN,
@@ -33,7 +29,8 @@ class Metadata(object):
             LOG_FILE,
             SIGNALFX_REST_API,
             PICKLE_FILE,
-            SLEEP_DURATION
+            SLEEP_DURATION,
+            LOG_HANDLER
             ):
         self.api = autoconfigure()
         self.SIGNALFX_API_TOKEN = SIGNALFX_API_TOKEN
@@ -45,15 +42,20 @@ class Metadata(object):
 
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
-        self.handler = logging.FileHandler(DEFAULT_LOG_FILE)
+        if LOG_HANDLER == 'logfile':
+            self.handler = logging.FileHandler(DEFAULT_LOG_FILE)
+        else:
+            self.handler = logging.StreamHandler(sys.stdout)
         self.handler.setLevel(logging.INFO)
         self.formatter = logging.Formatter(
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         self.handler.setFormatter(self.formatter)
         self.logger.addHandler(self.handler)
 
-        print("init_ log file:")
-        print(LOG_FILE)
+        self.propertyNamePattern = re.compile('^[a-zA-Z_][a-zA-Z0-9_-]*$')
+        self.config = []
+        self.organization = ''
+        self.nodes_metadata = []
 
     def run(self):
         """
@@ -104,7 +106,7 @@ class Metadata(object):
             copy.deepcopy(nodeInformation))
         if new_metadata:
             resp = requests.patch(
-                self.URL + '/' + signalfxObjectId,
+                self.SIGNALFX_REST_API + '/' + signalfxObjectId,
                 params=new_metadata, headers=headers)
         else:
             self.logger.info('No new metadata is found for ' +
@@ -140,7 +142,7 @@ class Metadata(object):
             'query': 'chefUniqueId:' + nodeInformation['chefUniqueId'],
             'getIDs': 'true'
         }
-        resp = requests.get(self.URL, params=params, headers=headers)
+        resp = requests.get(self.SIGNALFX_REST_API, params=params, headers=headers)
         if resp.status_code != 200:
             self.logger.error('Unable to get ID of' +
                               'chefUniqueId object from Signalfx')
@@ -172,7 +174,7 @@ class Metadata(object):
         if not self.propertyNamePattern.match(attribute):
             self.logger.error('Invalid attribute name '
                               + attribute
-                              + 'Attribute names should follow '
+                              + '. Attribute names should follow '
                               + 'the regex pattern ^[a-zA-Z_][a-zA-Z0-9_-]*$')
             return False
         return True
@@ -181,7 +183,7 @@ class Metadata(object):
         """
         Exit from the program with a message on the console
         """
-        print("Error Occured: logged into the log file! Exiting...")
+        print("Error Occured: logged into "+DEFAULT_LOG_FILE+"! Exiting...")
         sys.exit(1)
 
     def apiGetRequest(self, endpoint):
@@ -211,7 +213,7 @@ class Metadata(object):
     def getNodeInformation(self, node_name):
         """
         Get node attributes(metadata) using Node.attributes of PyChef
-        Collect the values of the configs selected by the user for each node
+        Store the values of the attributes selected by the user for each node
         """
         chefUniqueId = self.organization + "_" + node_name
         node_details = Node(node_name)
@@ -246,7 +248,7 @@ class Metadata(object):
             try:
                 tempValue = tempValue[token]
             except Exception:
-                self.logger.error('Invalid attribute is listed in '
+                self.logger.error('Invalid attribute '+attribute+' is listed in '
                                   + self.CONFIG_FILE, exc_info=True)
                 return None
         if isinstance(tempValue, dict):
@@ -258,12 +260,12 @@ class Metadata(object):
             return '$'.join(tempValue)
         return str(tempValue)
 
-def print_usage():
-    PROGRAM_NAME = sys.argv[0]
-    print("Usage: SIGNALFX_API_TOKEN=<YOUR_SIGNALFX_API_TOKEN> && "+
-        "python "+ PROGRAM_NAME)
-
 def getArgumentParser():
+    """
+    Create a parser object
+
+    return: argparse.ArgumentParser() object
+    """
     parser = argparse.ArgumentParser(description='Collects the metadata '+
         'about Chef nodes and forwards it to SignalFx.', add_help=True)
 
@@ -286,6 +288,14 @@ def getArgumentParser():
                     default=DEFAULT_LOG_FILE,
                     help='Log file to store the messages. '+
                     'Default is '+DEFAULT_LOG_FILE, type=str)
+    parser.add_argument('--log-to', action='store',
+                    dest='LOG_HANDLER',
+                    default=DEFAULT_LOG_HANDLER,
+                    choices=('stdout', 'logfile'),
+                    help='Choose between \'stdout\' and \'logfile\''+
+                    'to redirect log messages. '+
+                    'Use --log-file to change the default log file location'+
+                    'Default to this option is '+DEFAULT_LOG_HANDLER, type=str)
     parser.add_argument('--signalfx-rest-api', action='store',
                     dest='SIGNALFX_REST_API',
                     default=DEFAULT_SIGNALFX_REST_API,
@@ -299,17 +309,20 @@ def getArgumentParser():
     parser.add_argument('--sleep-duration', action='store',
                     dest='SLEEP_DURATION',
                     default=DEFAULT_SLEEP_DURATION,
-                    help='Specify the sleep Duration. Default is 60'+
+                    help='Specify the sleep duration. Default is 60'+
                     'Default is '+str(DEFAULT_SLEEP_DURATION), type=int)
+    parser.add_argument('--use-cron', action="store_true", 
+                    default=False,
+                    help='use this option if you want to run the program '+
+                    'using Cron. Default is False, meaning that program will '+
+                    'use sleep(SLEEP_DURATION) instead of cron')
 
     return parser
     
 
 def main(argv):
     """
-    ****** CHANGE THIS ******
-    If non empty SIGNALFX_API_TOKEN token is given, execute Metadata.run() and
-    sleep for Metadata.SLEEP_DURATION in a loop
+    Parse command line arguments and start the program.
     """
     parser = getArgumentParser()
     
@@ -321,19 +334,21 @@ def main(argv):
     except Exception as e:
         print("Error: Unable to find a variable with the name \""+
             user_args['ENV_VARIABLE_NAME']+"\" in your environment")
-        print("Look for --env-variable-name option in the guide\n")
+        print("For help, look for --env-variable-name option in the guide\n")
         parser.print_help()
         sys.exit(2)
 
     user_args.pop('ENV_VARIABLE_NAME')
     user_args['SIGNALFX_API_TOKEN'] = SIGNALFX_API_TOKEN
-    print(user_args)
+    use_cron = user_args.pop('use_cron', False)
     
     m = Metadata(**user_args)
-    while True:
+    if use_cron:
         m.run()
-        sleep(m.SLEEP_DURATION)
-
+    else:
+        while True:
+            m.run()
+            sleep(m.SLEEP_DURATION)
 
 if __name__ == "__main__":
     main(sys.argv[1:])
