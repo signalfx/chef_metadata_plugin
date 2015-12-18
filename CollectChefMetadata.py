@@ -7,6 +7,7 @@ import requests
 import copy
 import re
 import pickle
+import os
 
 
 class Metadata(object):
@@ -14,7 +15,7 @@ class Metadata(object):
     Collect metadata of a chef node
     """
     CONFIG_FILE = 'configuration.txt'
-    LOG_FILE = '/var/log/ChefMetadata.log'
+    LOG_FILE = '/tmp/ChefMetadata.log'
     URL = 'http://lab-api.corp.signalfuse.com:8080/v1/dimension'
     PICKLE_FILE = 'pk_metadata.pk'
     SLEEP_DURATION = 60			# IN SECONDS
@@ -32,7 +33,12 @@ class Metadata(object):
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
-    def __init__(self, SIGNALFX_API_TOKEN):
+    def __init__(self, SIGNALFX_API_TOKEN,
+            CONFIG_FILE = 'configuration.txt',
+            LOG_FILE = '/var/log/ChefMetadata.log',
+            URL = 'http://lab-api.corp.signalfuse.com:8080/v1/dimension',
+            PICKLE_FILE = 'pk_metadata.pk'
+            ):
         self.api = autoconfigure()
         self.SIGNALFX_API_TOKEN = SIGNALFX_API_TOKEN
 
@@ -239,33 +245,63 @@ class Metadata(object):
             return '$'.join(tempValue)
         return str(tempValue)
 
+def print_usage():
+    PROGRAM_NAME = sys.argv[0]
+    print("Usage: SIGNALFX_API_TOKEN=<YOUR_SIGNALFX_API_TOKEN> && "+
+        "python "+ PROGRAM_NAME)
 
 def main(argv):
     """
+    ****** CHANGE THIS ******
     If non empty SIGNALFX_API_TOKEN token is given, execute Metadata.run() and
     sleep for Metadata.SLEEP_DURATION in a loop
     """
-    FILE_NAME = sys.argv[0]
+
+    # Get the SIGNALFX_API_TOKEN from environment variables
     try:
-        opts, argv = getopt.getopt(argv, "ht:", ["SIGNALFX_API_TOKEN="])
-    except getopt.GetoptError:
-        print 'Usage: python ' + FILE_NAME + ' -t <SIGNALFX_API_TOKEN>'
+        SIGNALFX_API_TOKEN = os.environ.get('SIGNALFX_API_TOKEN')
+        print SIGNALFX_API_TOKEN
+    except Exception as e:
+        print("Unable to find SIGNALFX_API_TOKEN in your "+
+            "environment variables")
+        print_usage()
         sys.exit(2)
-    for opt, arg in opts:
-        if opt == '-h':
-            print 'Usage: python ' + FILE_NAME + ' -t <SIGNALFX_API_TOKEN>'
-            sys.exit()
-        elif opt in ["-t", "SIGNALFX_API_TOKEN"]:
-            SIGNALFX_API_TOKEN = arg
-    if SIGNALFX_API_TOKEN:
-        m = Metadata(SIGNALFX_API_TOKEN)
-        while True:
-            m.run()
-            sleep(m.SLEEP_DURATION)
+
+    if len(sys.argv) == 1:
+        print "Executing the program with default parameters"
     else:
-        print 'Enter valid SIGNALFX API TOKEN!'
-        print 'Usage: python ' + FILE_NAME + ' -t <SIGNALFX_API_TOKEN>'
-        sys.exit(2)
+        try:
+            opts, argv = getopt.getopt(argv, "hC:l:", ["config-file=", 
+                "log-file=", "signalfx-rest-api=", "pickle-file=", 
+                "sleep-duration="])
+        except getopt.GetoptError:
+            print_usage()
+            sys.exit(2)
+        print(opts)
+        for opt, arg in opts:
+            if opt == '-h':
+                print_usage()
+                sys.exit()
+            elif opt in ["-C", "--config-file"]:
+                CONFIG_FILE = arg
+                print("configFile", CONFIG_FILE)
+            elif opt in ["-l", "--log-file"]:
+                LOG_FILE = arg
+                print(LOG_FILE)
+            elif opt in ["--signalfx-rest-api"]:
+                URL = arg # change name 'url' to SIGNALFX_REST_API
+                print(URL)
+            elif opt in ["-p", "--pickle-file"]:
+                PICKLE_FILE = arg
+                print(PICKLE_FILE)
+            elif opt in ["-s", "--sleep-duration"]:
+                SLEEP_DURATION = arg
+                print(SLEEP_DURATION)
+    sys.exit() # remove this ****** before proceeding
+    m = Metadata(SIGNALFX_API_TOKEN)
+    while True:
+        m.run()
+        sleep(m.SLEEP_DURATION)
 
 
 if __name__ == "__main__":
