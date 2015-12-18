@@ -2,7 +2,6 @@ from chef import autoconfigure, Node
 from time import sleep
 import logging
 import sys
-import getopt
 import requests
 import copy
 import re
@@ -18,19 +17,20 @@ DEFAULT_SLEEP_DURATION = 60
 DEFAULT_ENV_VARIABLE_NAME = 'SIGNALFX_API_TOKEN'
 DEFAULT_LOG_HANDLER = 'logfile'
 
+
 class Metadata(object):
     """
     Collect metadata of a chef node
     """
 
     def __init__(self,
-            SIGNALFX_API_TOKEN,
-            CONFIG_FILE,
-            LOG_FILE,
-            SIGNALFX_REST_API,
-            PICKLE_FILE,
-            SLEEP_DURATION,
-            LOG_HANDLER
+                 SIGNALFX_API_TOKEN,
+                 CONFIG_FILE,
+                 LOG_FILE,
+                 SIGNALFX_REST_API,
+                 PICKLE_FILE,
+                 SLEEP_DURATION,
+                 LOG_HANDLER
             ):
         self.api = autoconfigure()
         self.SIGNALFX_API_TOKEN = SIGNALFX_API_TOKEN
@@ -142,7 +142,8 @@ class Metadata(object):
             'query': 'chefUniqueId:' + nodeInformation['chefUniqueId'],
             'getIDs': 'true'
         }
-        resp = requests.get(self.SIGNALFX_REST_API, params=params, headers=headers)
+        resp = requests.get(self.SIGNALFX_REST_API,
+                            params=params, headers=headers)
         if resp.status_code != 200:
             self.logger.error('Unable to get ID of' +
                               'chefUniqueId object from Signalfx')
@@ -183,7 +184,7 @@ class Metadata(object):
         """
         Exit from the program with a message on the console
         """
-        print("Error Occured: logged into "+DEFAULT_LOG_FILE+"! Exiting...")
+        print("Error Occured: logged into " + DEFAULT_LOG_FILE + "! Exiting...")
         sys.exit(1)
 
     def apiGetRequest(self, endpoint):
@@ -248,7 +249,7 @@ class Metadata(object):
             try:
                 tempValue = tempValue[token]
             except Exception:
-                self.logger.error('Invalid attribute '+attribute+' is listed in '
+                self.logger.error('Invalid attribute ' + attribute + ' is listed in '
                                   + self.CONFIG_FILE, exc_info=True)
                 return None
         if isinstance(tempValue, dict):
@@ -260,80 +261,81 @@ class Metadata(object):
             return '$'.join(tempValue)
         return str(tempValue)
 
+
 def getArgumentParser():
     """
     Create a parser object
 
     return: argparse.ArgumentParser() object
     """
-    parser = argparse.ArgumentParser(description='Collects the metadata '+
-        'about Chef nodes and forwards it to SignalFx.', add_help=True)
+    parser = argparse.ArgumentParser(description='Collects the metadata ' +
+                                     'about Chef nodes and forwards it to SignalFx.', add_help=True)
 
     parser.add_argument('--env-variable-name', action='store',
-                    dest='ENV_VARIABLE_NAME',
-                    default=DEFAULT_ENV_VARIABLE_NAME,
-                    help='Set SIGNALFX_API_TOKEN with your SIGNALFX_API_TOKEN as value '+
-                    'in your environment variables. '+
-                    'You can change the environment variable name to look for, '+
-                    'using this option.'+
-                    'Default is '+DEFAULT_ENV_VARIABLE_NAME, type=str)
+                        dest='ENV_VARIABLE_NAME',
+                        default=DEFAULT_ENV_VARIABLE_NAME,
+                        help='Set SIGNALFX_API_TOKEN with your SIGNALFX_API_TOKEN as value ' +
+                        'in your environment variables. ' +
+                        'You can change the environment variable name to look for, ' +
+                        'using this option.' +
+                        'Default is ' + DEFAULT_ENV_VARIABLE_NAME, type=str)
     parser.add_argument('--config-file', action='store',
-                    dest='CONFIG_FILE',
-                    default=DEFAULT_CONFIG_FILE,
-                    help='File with the list of attributes to be attached to '+
-                    '\'ChefUniqueId\' on SignalFx. '+
-                    'Default is '+DEFAULT_CONFIG_FILE, type=str)
+                        dest='CONFIG_FILE',
+                        default=DEFAULT_CONFIG_FILE,
+                        help='File with the list of attributes to be attached to ' +
+                        '\'ChefUniqueId\' on SignalFx. ' +
+                        'Default is ' + DEFAULT_CONFIG_FILE, type=str)
     parser.add_argument('--log-file', action='store',
-                    dest='LOG_FILE',
-                    default=DEFAULT_LOG_FILE,
-                    help='Log file to store the messages. '+
-                    'Default is '+DEFAULT_LOG_FILE, type=str)
+                        dest='LOG_FILE',
+                        default=DEFAULT_LOG_FILE,
+                        help='Log file to store the messages. ' +
+                        'Default is ' + DEFAULT_LOG_FILE, type=str)
     parser.add_argument('--log-to', action='store',
-                    dest='LOG_HANDLER',
-                    default=DEFAULT_LOG_HANDLER,
-                    choices=('stdout', 'logfile'),
-                    help='Choose between \'stdout\' and \'logfile\''+
-                    'to redirect log messages. '+
-                    'Use --log-file to change the default log file location'+
-                    'Default to this option is '+DEFAULT_LOG_HANDLER, type=str)
+                        dest='LOG_HANDLER',
+                        default=DEFAULT_LOG_HANDLER,
+                        choices=('stdout', 'logfile'),
+                        help='Choose between \'stdout\' and \'logfile\'' +
+                        'to redirect log messages. ' +
+                        'Use --log-file to change the default log file location' +
+                        'Default to this option is ' + DEFAULT_LOG_HANDLER, type=str)
     parser.add_argument('--signalfx-rest-api', action='store',
-                    dest='SIGNALFX_REST_API',
-                    default=DEFAULT_SIGNALFX_REST_API,
-                    help='SignalFx REST API endpoint. '+
-                    'Default is '+DEFAULT_SIGNALFX_REST_API, type=str)
+                        dest='SIGNALFX_REST_API',
+                        default=DEFAULT_SIGNALFX_REST_API,
+                        help='SignalFx REST API endpoint. ' +
+                        'Default is ' + DEFAULT_SIGNALFX_REST_API, type=str)
     parser.add_argument('--pickle-file', action='store',
-                    dest='PICKLE_FILE',
-                    default=DEFAULT_PICKLE_FILE,
-                    help='Pickle file to store the last retrieved metadata. '+
-                    'Default is '+DEFAULT_PICKLE_FILE, type=str)
+                        dest='PICKLE_FILE',
+                        default=DEFAULT_PICKLE_FILE,
+                        help='Pickle file to store the last retrieved metadata. ' +
+                        'Default is ' + DEFAULT_PICKLE_FILE, type=str)
     parser.add_argument('--sleep-duration', action='store',
-                    dest='SLEEP_DURATION',
-                    default=DEFAULT_SLEEP_DURATION,
-                    help='Specify the sleep duration. Default is 60'+
-                    'Default is '+str(DEFAULT_SLEEP_DURATION), type=int)
-    parser.add_argument('--use-cron', action="store_true", 
-                    default=False,
-                    help='use this option if you want to run the program '+
-                    'using Cron. Default is False, meaning that program will '+
-                    'use sleep(SLEEP_DURATION) instead of cron')
+                        dest='SLEEP_DURATION',
+                        default=DEFAULT_SLEEP_DURATION,
+                        help='Specify the sleep duration. Default is 60' +
+                        'Default is ' + str(DEFAULT_SLEEP_DURATION), type=int)
+    parser.add_argument('--use-cron', action="store_true",
+                        default=False,
+                        help='use this option if you want to run the program ' +
+                        'using Cron. Default is False, meaning that program will ' +
+                        'use sleep(SLEEP_DURATION) instead of cron')
 
     return parser
-    
+
 
 def main(argv):
     """
     Parse command line arguments and start the program.
     """
     parser = getArgumentParser()
-    
+
     user_args = vars(parser.parse_args(argv))
 
     # Get the SIGNALFX_API_TOKEN from environment variables
     try:
         SIGNALFX_API_TOKEN = os.environ[user_args['ENV_VARIABLE_NAME']]
-    except Exception as e:
-        print("Error: Unable to find a variable with the name \""+
-            user_args['ENV_VARIABLE_NAME']+"\" in your environment")
+    except Exception:
+        print("Error: Unable to find a variable with the name \"" +
+              user_args['ENV_VARIABLE_NAME'] + "\" in your environment")
         print("For help, look for --env-variable-name option in the guide\n")
         parser.print_help()
         sys.exit(2)
@@ -341,7 +343,7 @@ def main(argv):
     user_args.pop('ENV_VARIABLE_NAME')
     user_args['SIGNALFX_API_TOKEN'] = SIGNALFX_API_TOKEN
     use_cron = user_args.pop('use_cron', False)
-    
+
     m = Metadata(**user_args)
     if use_cron:
         m.run()
