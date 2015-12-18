@@ -1,0 +1,8 @@
+machine:
+  python:
+    version: 2.7.8
+
+test:
+  pre:
+    - mdl --warnings README.md
+    - flake8 *.py
