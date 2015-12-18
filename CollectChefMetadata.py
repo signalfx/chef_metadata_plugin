@@ -8,39 +8,52 @@ import copy
 import re
 import pickle
 import os
+import argparse
 
+DEFAULT_CONFIG_FILE = 'configuration.txt'
+DEFAULT_LOG_FILE = '/tmp/ChefMetadata.log'
+DEFAULT_SIGNALFX_REST_API = 'http://lab-api.corp.signalfuse.com:8080'
+DEFAULT_PICKLE_FILE = 'pk_metadata.pk'
+DEFAULT_SLEEP_DURATION = 60
+DEFAULT_ENV_VARIABLE_NAME = 'SIGNALFX_API_TOKEN'
 
 class Metadata(object):
     """
     Collect metadata of a chef node
     """
-    CONFIG_FILE = 'configuration.txt'
-    LOG_FILE = '/tmp/ChefMetadata.log'
-    URL = 'http://lab-api.corp.signalfuse.com:8080/v1/dimension'
-    PICKLE_FILE = 'pk_metadata.pk'
-    SLEEP_DURATION = 60			# IN SECONDS
+    			# IN SECONDS
     propertyNamePattern = re.compile('^[a-zA-Z_][a-zA-Z0-9_-]*$')
     config = []
     organization = ''
     nodes_metadata = []
 
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    handler = logging.FileHandler(LOG_FILE)
-    handler.setLevel(logging.INFO)
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-
-    def __init__(self, SIGNALFX_API_TOKEN,
-            CONFIG_FILE = 'configuration.txt',
-            LOG_FILE = '/var/log/ChefMetadata.log',
-            URL = 'http://lab-api.corp.signalfuse.com:8080/v1/dimension',
-            PICKLE_FILE = 'pk_metadata.pk'
+    def __init__(self,
+            SIGNALFX_API_TOKEN,
+            CONFIG_FILE,
+            LOG_FILE,
+            SIGNALFX_REST_API,
+            PICKLE_FILE,
+            SLEEP_DURATION
             ):
         self.api = autoconfigure()
         self.SIGNALFX_API_TOKEN = SIGNALFX_API_TOKEN
+        self.CONFIG_FILE = CONFIG_FILE
+        self.LOG_FILE = LOG_FILE
+        self.SIGNALFX_REST_API = SIGNALFX_REST_API + '/v1/dimension'
+        self.PICKLE_FILE = PICKLE_FILE
+        self.SLEEP_DURATION = SLEEP_DURATION
+
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.INFO)
+        self.handler = logging.FileHandler(DEFAULT_LOG_FILE)
+        self.handler.setLevel(logging.INFO)
+        self.formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        self.handler.setFormatter(self.formatter)
+        self.logger.addHandler(self.handler)
+
+        print("init_ log file:")
+        print(LOG_FILE)
 
     def run(self):
         """
@@ -250,55 +263,73 @@ def print_usage():
     print("Usage: SIGNALFX_API_TOKEN=<YOUR_SIGNALFX_API_TOKEN> && "+
         "python "+ PROGRAM_NAME)
 
+def getArgumentParser():
+    parser = argparse.ArgumentParser(description='Collects the metadata '+
+        'about Chef nodes and forwards it to SignalFx.', add_help=True)
+
+    parser.add_argument('--env-variable-name', action='store',
+                    dest='ENV_VARIABLE_NAME',
+                    default=DEFAULT_ENV_VARIABLE_NAME,
+                    help='Set SIGNALFX_API_TOKEN with your SIGNALFX_API_TOKEN as value '+
+                    'in your environment variables. '+
+                    'You can change the environment variable name to look for, '+
+                    'using this option.'+
+                    'Default is '+DEFAULT_ENV_VARIABLE_NAME, type=str)
+    parser.add_argument('--config-file', action='store',
+                    dest='CONFIG_FILE',
+                    default=DEFAULT_CONFIG_FILE,
+                    help='File with the list of attributes to be attached to '+
+                    '\'ChefUniqueId\' on SignalFx. '+
+                    'Default is '+DEFAULT_CONFIG_FILE, type=str)
+    parser.add_argument('--log-file', action='store',
+                    dest='LOG_FILE',
+                    default=DEFAULT_LOG_FILE,
+                    help='Log file to store the messages. '+
+                    'Default is '+DEFAULT_LOG_FILE, type=str)
+    parser.add_argument('--signalfx-rest-api', action='store',
+                    dest='SIGNALFX_REST_API',
+                    default=DEFAULT_SIGNALFX_REST_API,
+                    help='SignalFx REST API endpoint. '+
+                    'Default is '+DEFAULT_SIGNALFX_REST_API, type=str)
+    parser.add_argument('--pickle-file', action='store',
+                    dest='PICKLE_FILE',
+                    default=DEFAULT_PICKLE_FILE,
+                    help='Pickle file to store the last retrieved metadata. '+
+                    'Default is '+DEFAULT_PICKLE_FILE, type=str)
+    parser.add_argument('--sleep-duration', action='store',
+                    dest='SLEEP_DURATION',
+                    default=DEFAULT_SLEEP_DURATION,
+                    help='Specify the sleep Duration. Default is 60'+
+                    'Default is '+str(DEFAULT_SLEEP_DURATION), type=int)
+
+    return parser
+    
+
 def main(argv):
     """
     ****** CHANGE THIS ******
     If non empty SIGNALFX_API_TOKEN token is given, execute Metadata.run() and
     sleep for Metadata.SLEEP_DURATION in a loop
     """
+    parser = getArgumentParser()
+    
+    user_args = vars(parser.parse_args(argv))
 
     # Get the SIGNALFX_API_TOKEN from environment variables
     try:
-        SIGNALFX_API_TOKEN = os.environ.get('SIGNALFX_API_TOKEN')
-        print SIGNALFX_API_TOKEN
+        SIGNALFX_API_TOKEN = os.environ[user_args['ENV_VARIABLE_NAME']]
     except Exception as e:
-        print("Unable to find SIGNALFX_API_TOKEN in your "+
-            "environment variables")
-        print_usage()
+        print("Error: Unable to find a variable with the name \""+
+            user_args['ENV_VARIABLE_NAME']+"\" in your environment")
+        print("Look for --env-variable-name option in the guide\n")
+        parser.print_help()
         sys.exit(2)
 
-    if len(sys.argv) == 1:
-        print "Executing the program with default parameters"
-    else:
-        try:
-            opts, argv = getopt.getopt(argv, "hC:l:", ["config-file=", 
-                "log-file=", "signalfx-rest-api=", "pickle-file=", 
-                "sleep-duration="])
-        except getopt.GetoptError:
-            print_usage()
-            sys.exit(2)
-        print(opts)
-        for opt, arg in opts:
-            if opt == '-h':
-                print_usage()
-                sys.exit()
-            elif opt in ["-C", "--config-file"]:
-                CONFIG_FILE = arg
-                print("configFile", CONFIG_FILE)
-            elif opt in ["-l", "--log-file"]:
-                LOG_FILE = arg
-                print(LOG_FILE)
-            elif opt in ["--signalfx-rest-api"]:
-                URL = arg # change name 'url' to SIGNALFX_REST_API
-                print(URL)
-            elif opt in ["-p", "--pickle-file"]:
-                PICKLE_FILE = arg
-                print(PICKLE_FILE)
-            elif opt in ["-s", "--sleep-duration"]:
-                SLEEP_DURATION = arg
-                print(SLEEP_DURATION)
-    sys.exit() # remove this ****** before proceeding
-    m = Metadata(SIGNALFX_API_TOKEN)
+    user_args.pop('ENV_VARIABLE_NAME')
+    user_args['SIGNALFX_API_TOKEN'] = SIGNALFX_API_TOKEN
+    print(user_args)
+    
+    m = Metadata(**user_args)
     while True:
         m.run()
         sleep(m.SLEEP_DURATION)
