@@ -1,5 +1,2 @@
 pychef>=0.2.3
 requests>=2.7.0
-flake8
-autoflake
-autopep8

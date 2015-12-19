@@ -11,26 +11,26 @@ import argparse
 
 DEFAULT_CONFIG_FILE = 'configuration.txt'
 DEFAULT_LOG_FILE = '/tmp/ChefMetadata.log'
-DEFAULT_SIGNALFX_REST_API = 'http://lab-api.corp.signalfuse.com:8080'
+DEFAULT_SIGNALFX_REST_API = 'https://api.signalfx.com'
 DEFAULT_PICKLE_FILE = 'pk_metadata.pk'
 DEFAULT_SLEEP_DURATION = 60
 DEFAULT_ENV_VARIABLE_NAME = 'SIGNALFX_API_TOKEN'
 DEFAULT_LOG_HANDLER = 'logfile'
 
 
-class Metadata(object):
+class ChefMetadata(object):
     """
-    Collect metadata of a chef node
+    Collect and send metadata of chef cluster to SignalFx
     """
 
     def __init__(self,
                  SIGNALFX_API_TOKEN,
-                 CONFIG_FILE,
-                 LOG_FILE,
-                 SIGNALFX_REST_API,
-                 PICKLE_FILE,
-                 SLEEP_DURATION,
-                 LOG_HANDLER):
+                 CONFIG_FILE=DEFAULT_CONFIG_FILE,
+                 LOG_FILE=DEFAULT_LOG_FILE,
+                 SIGNALFX_REST_API=DEFAULT_SIGNALFX_REST_API,
+                 PICKLE_FILE=DEFAULT_PICKLE_FILE,
+                 SLEEP_DURATION=DEFAULT_SLEEP_DURATION,
+                 LOG_HANDLER=DEFAULT_LOG_HANDLER):
         self.api = autoconfigure()
         self.SIGNALFX_API_TOKEN = SIGNALFX_API_TOKEN
         self.CONFIG_FILE = CONFIG_FILE
@@ -51,7 +51,7 @@ class Metadata(object):
         self.handler.setFormatter(self.formatter)
         self.logger.addHandler(self.handler)
 
-        self.propertyNamePattern = re.compile('^[a-zA-Z_][a-zA-Z0-9_-]*$')
+        self.property_name_pattern = re.compile('^[a-zA-Z_][a-zA-Z0-9_-]*$')
         self.config = []
         self.organization = ''
         self.nodes_metadata = []
@@ -64,95 +64,95 @@ class Metadata(object):
         Save the metadata for future comparisions
         """
         self.nodes_metadata = []
-        self.readConfig()
-        self.collectMetadataFromChef()
-        for nodeInformation in self.nodes_metadata:
-            self.sendMetadataToSignalfx(nodeInformation)
-        self.saveMetadata()
+        self.read_config()
+        self.collect_metadata_from_chef()
+        for node_information in self.nodes_metadata:
+            self.send_metadata_to_signalfx(node_information)
+        self.save_metadata()
 
-    def saveMetadata(self):
+    def save_metadata(self):
         """
         Save the metadata as Python pickle
         """
-        pickleData = {}
-        for nodeInformation in self.nodes_metadata:
-            pickleData[nodeInformation['chefUniqueId']] = nodeInformation
-            pickleData[nodeInformation['chefUniqueId']].pop('chefUniqueId')
+        pickle_data = {}
+        for node_information in self.nodes_metadata:
+            pickle_data[node_information['chefUniqueId']] = node_information
+            pickle_data[node_information['chefUniqueId']].pop('chefUniqueId')
         output = open(self.PICKLE_FILE, 'wb')
-        pickle.dump(pickleData, output)
+        pickle.dump(pickle_data, output)
         self.logger.info('Saved updated metadata to ' + self.PICKLE_FILE)
         output.close()
 
-    def sendMetadataToSignalfx(self, nodeInformation):
+    def send_metadata_to_signalfx(self, node_information):
         """
-        Get ObjectID for the chefUniqueId dimension from Signalfx
+        Get ObjectID of the chefUniqueId dimension from Signalfx
         Check for changes between newly collected metadata and last run's data
         If there are any updates, send those changes to Signalfx
         """
         headers = {
             'X-SF-Token': self.SIGNALFX_API_TOKEN,
         }
-        resp = self.getSignalfxObjectId(nodeInformation, headers)
+        resp = self.get_signalfx_objectid(node_information, headers)
         if len(resp.json()['rs']) == 0:
             self.logger.info('Signalfx does not have an object '
                              + 'for your dimension chefUniqueId:'
-                             + nodeInformation['chefUniqueId'])
+                             + node_information['chefUniqueId'])
             return
-        signalfxObjectId = resp.json()['rs'][0]
-        self.logger.info("ObjectID for " + nodeInformation['chefUniqueId']
-                         + " is " + signalfxObjectId)
-        new_metadata = self.checkForUpdatesInMetadata(
-            copy.deepcopy(nodeInformation))
+        signalfx_objectid = resp.json()['rs'][0]
+        self.logger.info("ObjectID for " + node_information['chefUniqueId']
+                         + " is " + signalfx_objectid)
+        new_metadata = self.check_for_updates_in_metadata(
+            copy.deepcopy(node_information))
         if new_metadata:
             resp = requests.patch(
-                self.SIGNALFX_REST_API + '/' + signalfxObjectId,
+                self.SIGNALFX_REST_API + '/' + signalfx_objectid,
                 params=new_metadata, headers=headers)
         else:
             self.logger.info('No new metadata is found for ' +
-                             nodeInformation['chefUniqueId'])
+                             node_information['chefUniqueId'])
 
-    def checkForUpdatesInMetadata(self, current_data):
+    def check_for_updates_in_metadata(self, current_data):
         """
         Read the data saved in the last run
         Compare it with the current metadata and pop unchanged items
 
-        return: updated metadata
+        return: Recently updated metadata
         """
-        inputPickle = open(self.PICKLE_FILE, 'rb')
+        input_pickle = open(self.PICKLE_FILE, 'rb')
         self.logger.info('Reading previous metadata from ' + self.PICKLE_FILE)
-        savedMetadata = pickle.load(inputPickle)
-        inputPickle.close()
-        if current_data['chefUniqueId'] not in savedMetadata:
+        saved_metadata = pickle.load(input_pickle)
+        input_pickle.close()
+        if current_data['chefUniqueId'] not in saved_metadata:
             return current_data
-        previous_data = savedMetadata[current_data['chefUniqueId']]
+        previous_data = saved_metadata[current_data['chefUniqueId']]
         for key in previous_data.keys():
             if key in current_data and current_data[key] == previous_data[key]:
                 current_data.pop(key)
         current_data.pop('chefUniqueId')
         return current_data
 
-    def getSignalfxObjectId(self, nodeInformation, headers):
+    def get_signalfx_objectid(self, node_information, headers):
         """
-        Get ObjectID for the chefUniqueId dimension from Signalfx
+        Get ObjectID of the chefUniqueId dimension from Signalfx
 
         return: the api response
         """
         params = {
-            'query': 'chefUniqueId:' + nodeInformation['chefUniqueId'],
+            'query': 'chefUniqueId:' + node_information['chefUniqueId'],
             'getIDs': 'true'
         }
-        resp = requests.get(self.SIGNALFX_REST_API,
-                            params=params, headers=headers)
-        if resp.status_code != 200:
-            self.logger.error('Unable to get ID of' +
-                              'chefUniqueId object from Signalfx')
-            print(resp.raise_for_status())
-            self.exitNow()
+        try:
+            resp = requests.get(self.SIGNALFX_REST_API,
+                                params=params, headers=headers)
+        except:
+            self.logger.error('Unable to query Signalfx REST API',
+                              exc_info=True)
+            self.exit_now()
         return resp
 
-    def readConfig(self):
+    def read_config(self):
         """
-        Read the configuration file
+        Read the configuration file and get the user selected attributes
         """
         self.config = []
         with open(self.CONFIG_FILE, 'r') as f:
@@ -160,18 +160,18 @@ class Metadata(object):
             for line in lines:
                 if not line.startswith("#") and line != '\n':
                     attribute = line.rstrip('\n')
-                    if self.checkPropertyNameSyntax(attribute
-                                                    .replace('.', '_')):
+                    if self.check_property_name_syntax(attribute
+                                                       .replace('.', '_')):
                         self.config.append(attribute)
 
-    def checkPropertyNameSyntax(self, attribute):
+    def check_property_name_syntax(self, attribute):
         """
         Check if the attribute name from the configuration file
         follows the pattern expected by Signalfx
 
         return: True or False
         """
-        if not self.propertyNamePattern.match(attribute):
+        if not self.property_name_pattern.match(attribute):
             self.logger.error('Invalid attribute name '
                               + attribute
                               + '. Attribute names should follow '
@@ -179,59 +179,59 @@ class Metadata(object):
             return False
         return True
 
-    def exitNow(self):
+    def exit_now(self):
         """
-        Exit from the program with a message on the console
+        Exit the program with a exit message on the console
         """
-        print("Error Occured: logged into " + DEFAULT_LOG_FILE +
+        print("Error occured: logged into " + DEFAULT_LOG_FILE +
               "! Exiting...")
         sys.exit(1)
 
-    def apiGetRequest(self, endpoint):
+    def chef_api_get_request(self, endpoint):
         """
-        Execute the Chef Server api's GET request for given endpoint
+        GET the data from Chef Server API for the given endpoint
         """
         value = None
         try:
             value = self.api.api_request('GET', endpoint)
         except Exception:
             self.logger.error(
-                'Unable to perform api GET request', exc_info=True)
-            self.exitNow()
+                'Unable to perform Chef api GET request', exc_info=True)
+            self.exit_now()
         return value
 
-    def collectMetadataFromChef(self):
+    def collect_metadata_from_chef(self):
         """
-        Get the current organization name and its nodes
-        Get the metadata for each node
+        GET the organization name and its nodes from Chef Server API
+        Collect the values for the user selected attributes of each node
         """
-        organization_details = self.apiGetRequest('')
+        organization_details = self.chef_api_get_request('')
         self.organization = organization_details['name']
-        nodes = self.apiGetRequest('/nodes')
+        nodes = self.chef_api_get_request('/nodes')
         for node_name in nodes.keys():
-            self.getNodeInformation(node_name)
+            self.get_node_information(node_name)
 
-    def getNodeInformation(self, node_name):
+    def get_node_information(self, node_name):
         """
         Get node attributes(metadata) using Node.attributes of PyChef
         Store the values of the attributes selected by the user for each node
         """
         chefUniqueId = self.organization + "_" + node_name
         node_details = Node(node_name)
-        nodeInformation = {}
-        nodeInformation['chefUniqueId'] = chefUniqueId
-        nodeInformation['chef_environment'] = node_details.chef_environment
+        node_information = {}
+        node_information['chefUniqueId'] = chefUniqueId
+        node_information['chef_environment'] = node_details.chef_environment
         for attribute in self.config:
-            attributeValue = self.getAttributeValue(
+            attribute_value = self.get_attribute_value(
                 attribute, node_details)
-            if attributeValue:
-                attribute = self.adjustAttributeName(attribute)
-                nodeInformation[attribute] = attributeValue
-        self.nodes_metadata.append(nodeInformation)
+            if attribute_value:
+                attribute = self.adjust_attribute_name(attribute)
+                node_information[attribute] = attribute_value
+        self.nodes_metadata.append(node_information)
 
-    def adjustAttributeName(self, attribute):
+    def adjust_attribute_name(self, attribute):
         """
-        Replace '.' by '_' in the attributes listed in the configuration file
+        Replace '.' by '_' and add 'chef_' to the given attribute
         and return it
         """
         attribute = attribute.replace('.', '_')
@@ -239,33 +239,36 @@ class Metadata(object):
             attribute = 'chef_' + attribute
         return attribute
 
-    def getAttributeValue(self, attribute, node_details):
+    def get_attribute_value(self, attribute, node_details):
         """
-        Return the value of the given attribute
+        Return the value of the given attribute as a string from node_details
+        If the value turns out to be a list, join the values into a single
+        string using '$'.
+        If the value is a dictionary, log an error
         """
         tokens = attribute.split('.')
-        tempValue = node_details
+        temp_value = node_details
         for token in tokens:
             try:
-                tempValue = tempValue[token]
+                temp_value = temp_value[token]
             except Exception:
                 self.logger.error('Invalid attribute ' + attribute +
                                   ' is listed in '
                                   + self.CONFIG_FILE, exc_info=True)
                 return None
-        if isinstance(tempValue, dict):
+        if isinstance(temp_value, dict):
             self.logger.error('Attribute value for ' +
                               attribute + ' cannot be a dictionary!')
             return None
-        if isinstance(tempValue, list) and not (
-                any(isinstance(x, dict) for x in tempValue)):
-            return '$'.join(tempValue)
-        return str(tempValue)
+        if isinstance(temp_value, list) and not (
+                any(isinstance(x, dict) for x in temp_value)):
+            return '$'.join(temp_value)
+        return str(temp_value)
 
 
-def getArgumentParser():
+def get_argument_parser():
     """
-    Create a parser object
+    Create a parser object and initialize it
 
     return: argparse.ArgumentParser() object
     """
@@ -279,20 +282,20 @@ def getArgumentParser():
                         help='Set SIGNALFX_API_TOKEN with your ' +
                         'SIGNALFX_API_TOKEN as value in your environment ' +
                         'variables. You can change the environment variable ' +
-                        'name to look for, using this option.' +
+                        'name to look for, using this option. ' +
                         'Default is ' + DEFAULT_ENV_VARIABLE_NAME, type=str)
     parser.add_argument('--config-file', action='store',
                         dest='CONFIG_FILE',
                         default=DEFAULT_CONFIG_FILE,
                         help='File with the list of attributes to be ' +
                         'attached to \'ChefUniqueId\' on SignalFx. ' +
-                        'Default is ' + DEFAULT_CONFIG_FILE, type=str)
+                        'Default is ./' + DEFAULT_CONFIG_FILE, type=str)
     parser.add_argument('--log-file', action='store',
                         dest='LOG_FILE',
                         default=DEFAULT_LOG_FILE,
                         help='Log file to store the messages. ' +
                         'Default is ' + DEFAULT_LOG_FILE, type=str)
-    parser.add_argument('--log-to', action='store',
+    parser.add_argument('--log-handler', action='store',
                         dest='LOG_HANDLER',
                         default=DEFAULT_LOG_HANDLER,
                         choices=('stdout', 'logfile'),
@@ -310,19 +313,19 @@ def getArgumentParser():
                         dest='PICKLE_FILE',
                         default=DEFAULT_PICKLE_FILE,
                         help='Pickle file to store the last retrieved ' +
-                        'metadata. Default is ' + DEFAULT_PICKLE_FILE,
+                        'metadata. Default is ./' + DEFAULT_PICKLE_FILE,
                         type=str)
     parser.add_argument('--sleep-duration', action='store',
                         dest='SLEEP_DURATION',
                         default=DEFAULT_SLEEP_DURATION,
-                        help='Specify the sleep duration. Default is 60' +
+                        help='Specify the sleep duration (in seconds).' +
                         'Default is ' + str(DEFAULT_SLEEP_DURATION), type=int)
     parser.add_argument('--use-cron', action="store_true",
                         default=False,
                         help='use this option if you want to run the ' +
                         ' program using Cron. Default is False, meaning ' +
-                        'that program will use sleep(SLEEP_DURATION) ' +
-                        'instead of cron')
+                        'that program will run in a loop using ' +
+                        ' sleep(SLEEP_DURATION) instead of cron')
 
     return parser
 
@@ -331,8 +334,7 @@ def main(argv):
     """
     Parse command line arguments and start the program.
     """
-    parser = getArgumentParser()
-
+    parser = get_argument_parser()
     user_args = vars(parser.parse_args(argv))
 
     # Get the SIGNALFX_API_TOKEN from environment variables
@@ -343,13 +345,13 @@ def main(argv):
               user_args['ENV_VARIABLE_NAME'] + "\" in your environment")
         print("For help, look for --env-variable-name option in the guide\n")
         parser.print_help()
-        sys.exit(2)
+        sys.exit(1)
 
     user_args.pop('ENV_VARIABLE_NAME')
     user_args['SIGNALFX_API_TOKEN'] = SIGNALFX_API_TOKEN
     use_cron = user_args.pop('use_cron', False)
 
-    m = Metadata(**user_args)
+    m = ChefMetadata(**user_args)
     if use_cron:
         m.run()
     else:
