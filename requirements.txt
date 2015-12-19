@@ -3,3 +3,4 @@ requests>=2.7.0
 flake8
 autoflake
 autopep8
+nose

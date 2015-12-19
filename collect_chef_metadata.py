@@ -292,7 +292,7 @@ def getArgumentParser():
                         default=DEFAULT_LOG_FILE,
                         help='Log file to store the messages. ' +
                         'Default is ' + DEFAULT_LOG_FILE, type=str)
-    parser.add_argument('--log-to', action='store',
+    parser.add_argument('--log-handler', action='store',
                         dest='LOG_HANDLER',
                         default=DEFAULT_LOG_HANDLER,
                         choices=('stdout', 'logfile'),
@@ -332,7 +332,6 @@ def main(argv):
     Parse command line arguments and start the program.
     """
     parser = getArgumentParser()
-
     user_args = vars(parser.parse_args(argv))
 
     # Get the SIGNALFX_API_TOKEN from environment variables
@@ -343,7 +342,7 @@ def main(argv):
               user_args['ENV_VARIABLE_NAME'] + "\" in your environment")
         print("For help, look for --env-variable-name option in the guide\n")
         parser.print_help()
-        sys.exit(2)
+        sys.exit(1)
 
     user_args.pop('ENV_VARIABLE_NAME')
     user_args['SIGNALFX_API_TOKEN'] = SIGNALFX_API_TOKEN
