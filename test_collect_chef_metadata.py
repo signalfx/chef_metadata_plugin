@@ -1,9 +1,9 @@
 import unittest
-import CollectChefMetadata
+import collect_chef_metadata
 import os
 
 
-class TestCollectChefMetadata(unittest.TestCase):
+class Test_collect_chef_metadata(unittest.TestCase):
     def test_SIGNALFX_API_TOKEN_IN_ENV(self):
         """
         Testing for the absense of SIGNALFX_API_TOKEN
@@ -11,7 +11,7 @@ class TestCollectChefMetadata(unittest.TestCase):
         We will get help on the stdout here. 
         """
         with self.assertRaises(SystemExit) as cm:
-            CollectChefMetadata.main([])
+            collect_chef_metadata.main([])
         self.assertEqual(cm.exception.code, 1)
     
     #@unittest.skip("temporarily disabled")
@@ -21,16 +21,16 @@ class TestCollectChefMetadata(unittest.TestCase):
         """
         os.environ['SIGNALFX_API_TOKEN'] = 'abcdefghijk'
         argv = []
-        parser = CollectChefMetadata.getArgumentParser()
+        parser = collect_chef_metadata.getArgumentParser()
         args = vars(parser.parse_args(argv))
         self.assertNotEqual(args, None)
-        self.assertEqual(args['CONFIG_FILE'], CollectChefMetadata.DEFAULT_CONFIG_FILE)
-        self.assertEqual(args['LOG_FILE'], CollectChefMetadata.DEFAULT_LOG_FILE)
-        self.assertEqual(args['SIGNALFX_REST_API'], CollectChefMetadata.DEFAULT_SIGNALFX_REST_API)
-        self.assertEqual(args['PICKLE_FILE'], CollectChefMetadata.DEFAULT_PICKLE_FILE)
-        self.assertEqual(args['SLEEP_DURATION'], CollectChefMetadata.DEFAULT_SLEEP_DURATION)
-        self.assertEqual(args['ENV_VARIABLE_NAME'], CollectChefMetadata.DEFAULT_ENV_VARIABLE_NAME)
-        self.assertEqual(args['LOG_HANDLER'], CollectChefMetadata.DEFAULT_LOG_HANDLER)
+        self.assertEqual(args['CONFIG_FILE'], collect_chef_metadata.DEFAULT_CONFIG_FILE)
+        self.assertEqual(args['LOG_FILE'], collect_chef_metadata.DEFAULT_LOG_FILE)
+        self.assertEqual(args['SIGNALFX_REST_API'], collect_chef_metadata.DEFAULT_SIGNALFX_REST_API)
+        self.assertEqual(args['PICKLE_FILE'], collect_chef_metadata.DEFAULT_PICKLE_FILE)
+        self.assertEqual(args['SLEEP_DURATION'], collect_chef_metadata.DEFAULT_SLEEP_DURATION)
+        self.assertEqual(args['ENV_VARIABLE_NAME'], collect_chef_metadata.DEFAULT_ENV_VARIABLE_NAME)
+        self.assertEqual(args['LOG_HANDLER'], collect_chef_metadata.DEFAULT_LOG_HANDLER)
 
     #@unittest.skip("temporarily disabled")
     def test_argument_parser_for_custom_parameters(self):
@@ -43,7 +43,7 @@ class TestCollectChefMetadata(unittest.TestCase):
                        '--env-variable-name', 'MY_SIGNALFX_API_TOKEN',
                        '--log-handler', 'stdout'
                        ]
-        parser = CollectChefMetadata.getArgumentParser()
+        parser = collect_chef_metadata.getArgumentParser()
         args = vars(parser.parse_args(custom_argv))
         self.assertNotEqual(args, None)
         self.assertEqual(args['CONFIG_FILE'], 'my_configuration.txt')
