@@ -18,9 +18,9 @@ DEFAULT_ENV_VARIABLE_NAME = 'SIGNALFX_API_TOKEN'
 DEFAULT_LOG_HANDLER = 'logfile'
 
 
-class Metadata(object):
+class ChefMetadata(object):
     """
-    Collect metadata of a chef node
+    Collect and send metadata of chef cluster to SignalFx
     """
 
     def __init__(self,
@@ -85,7 +85,7 @@ class Metadata(object):
 
     def send_metadata_to_signalfx(self, node_information):
         """
-        Get ObjectID for the chefUniqueId dimension from Signalfx
+        Get ObjectID of the chefUniqueId dimension from Signalfx
         Check for changes between newly collected metadata and last run's data
         If there are any updates, send those changes to Signalfx
         """
@@ -116,7 +116,7 @@ class Metadata(object):
         Read the data saved in the last run
         Compare it with the current metadata and pop unchanged items
 
-        return: updated metadata
+        return: Recently updated metadata
         """
         input_pickle = open(self.PICKLE_FILE, 'rb')
         self.logger.info('Reading previous metadata from ' + self.PICKLE_FILE)
@@ -133,7 +133,7 @@ class Metadata(object):
 
     def get_signalfx_objectid(self, node_information, headers):
         """
-        Get ObjectID for the chefUniqueId dimension from Signalfx
+        Get ObjectID of the chefUniqueId dimension from Signalfx
 
         return: the api response
         """
@@ -152,7 +152,7 @@ class Metadata(object):
 
     def read_config(self):
         """
-        Read the configuration file
+        Read the configuration file and get the user selected attributes
         """
         self.config = []
         with open(self.CONFIG_FILE, 'r') as f:
@@ -181,7 +181,7 @@ class Metadata(object):
 
     def exit_now(self):
         """
-        Exit from the program with a message on the console
+        Exit the program with a exit message on the console
         """
         print("Error occured: logged into " + DEFAULT_LOG_FILE +
               "! Exiting...")
@@ -189,7 +189,7 @@ class Metadata(object):
 
     def chef_api_get_request(self, endpoint):
         """
-        Execute the Chef Server api's GET request for given endpoint
+        GET the data from Chef Server API for the given endpoint
         """
         value = None
         try:
@@ -202,8 +202,8 @@ class Metadata(object):
 
     def collect_metadata_from_chef(self):
         """
-        Get the current organization name and its nodes
-        Get the metadata for each node
+        GET the organization name and its nodes from Chef Server API
+        Collect the values for the user selected attributes of each node
         """
         organization_details = self.chef_api_get_request('')
         self.organization = organization_details['name']
@@ -231,18 +231,20 @@ class Metadata(object):
 
     def adjust_attribute_name(self, attribute):
         """
-        Replace '.' by '_' in the attributes listed in the configuration file
+        Replace '.' by '_' and add 'chef_' to the given attribute
         and return it
         """
         attribute = attribute.replace('.', '_')
-        attribute = attribute.replace(' ', '')
         if not attribute.startswith('chef_'):
             attribute = 'chef_' + attribute
         return attribute
 
     def get_attribute_value(self, attribute, node_details):
         """
-        Return the value of the given attribute
+        Return the value of the given attribute as a string from node_details
+        If the value turns out to be a list, join the values into a single
+        string using '$'.
+        If the value is a dictionary, log an error
         """
         tokens = attribute.split('.')
         temp_value = node_details
@@ -266,7 +268,7 @@ class Metadata(object):
 
 def get_argument_parser():
     """
-    Create a parser object
+    Create a parser object and initialize it
 
     return: argparse.ArgumentParser() object
     """
@@ -349,7 +351,7 @@ def main(argv):
     user_args['SIGNALFX_API_TOKEN'] = SIGNALFX_API_TOKEN
     use_cron = user_args.pop('use_cron', False)
 
-    m = Metadata(**user_args)
+    m = ChefMetadata(**user_args)
     if use_cron:
         m.run()
     else:

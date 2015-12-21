@@ -30,7 +30,11 @@ class Test_collect_chef_metadata(unittest.TestCase):
                          collect_chef_metadata.DEFAULT_LOG_HANDLER)
 
     def test_argument_parser_for_custom_parameters(self):
+        """
+        Check if the parser is correctly setting the user specified parameters
+        """
         os.environ['MY_SIGNALFX_API_TOKEN'] = 'abcdefghijk'
+        # simulate user arguments as a list
         custom_argv = ['--config-file', 'my_configuration.txt',
                        '--log-file', '/tmp/dummy_log_file',
                        '--signalfx-rest-api',
@@ -53,7 +57,10 @@ class Test_collect_chef_metadata(unittest.TestCase):
         self.assertEqual(args['LOG_HANDLER'], 'stdout')
 
     def test_check_property_name_syntax(self):
-        m = collect_chef_metadata.Metadata(
+        """
+        Check if the attribute values follow the expected pattern by SignalFx
+        """
+        m = collect_chef_metadata.ChefMetadata(
             SIGNALFX_API_TOKEN='dummy_signalfx_api_token',
             LOG_HANDLER='stdout')
         self.assertTrue(m.check_property_name_syntax("language_python"), True)
@@ -68,7 +75,13 @@ class Test_collect_chef_metadata(unittest.TestCase):
             m.check_property_name_syntax("9chef_environment"), False)
 
     def test_adjust_attribute_name(self):
-        m = collect_chef_metadata.Metadata(
+        """
+        Check if the '.' in attributes listed in configuration.txt are replaced
+        by '_'.
+
+        Check if 'chef_' is being added to the attribute names
+        """
+        m = collect_chef_metadata.ChefMetadata(
             SIGNALFX_API_TOKEN='dummy_signalfx_api_token',
             LOG_HANDLER='stdout')
         self.assertEqual(
@@ -77,7 +90,13 @@ class Test_collect_chef_metadata(unittest.TestCase):
             m.adjust_attribute_name('chef_environment'), 'chef_environment')
 
     def test_get_attribute_value(self):
-        m = collect_chef_metadata.Metadata(
+        """
+        Check if the attribute value is retrieved as expected and as a string
+        Check if attribute value is a list, then the list elements are joined
+        by '$'.
+        Check if attribute value is a dictionary, then None is returned.
+        """
+        m = collect_chef_metadata.ChefMetadata(
             SIGNALFX_API_TOKEN='dummy_signalfx_api_token',
             LOG_HANDLER='stdout')
         self.assertEqual(
@@ -90,9 +109,9 @@ class Test_collect_chef_metadata(unittest.TestCase):
                                                                }), '2.7.8')
         self.assertEqual(
             m.get_attribute_value('roles', {'roles':
-                                            ['webserver',
-                                             'webcache']
-                                            }), 'webserver$webcache')
+                                            ['web server',
+                                             'web cache']
+                                            }), 'web server$web cache')
         self.assertEqual(
             m.get_attribute_value('languages.python', {'languages':
                                                        {'python':
