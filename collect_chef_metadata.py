@@ -161,7 +161,7 @@ class Metadata(object):
                 if not line.startswith("#") and line != '\n':
                     attribute = line.rstrip('\n')
                     if self.check_property_name_syntax(attribute
-                                                    .replace('.', '_')):
+                                                       .replace('.', '_')):
                         self.config.append(attribute)
 
     def check_property_name_syntax(self, attribute):
