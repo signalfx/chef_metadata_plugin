@@ -11,7 +11,7 @@ class Test_collect_chef_metadata(unittest.TestCase):
         """
         os.environ['SIGNALFX_API_TOKEN'] = 'abcdefghijk'
         argv = []
-        parser = collect_chef_metadata.getArgumentParser()
+        parser = collect_chef_metadata.get_argument_parser()
         args = vars(parser.parse_args(argv))
         self.assertNotEqual(args, None)
         self.assertEqual(args['CONFIG_FILE'],
@@ -40,7 +40,7 @@ class Test_collect_chef_metadata(unittest.TestCase):
                        '--env-variable-name', 'MY_SIGNALFX_API_TOKEN',
                        '--log-handler', 'stdout'
                        ]
-        parser = collect_chef_metadata.getArgumentParser()
+        parser = collect_chef_metadata.get_argument_parser()
         args = vars(parser.parse_args(custom_argv))
         self.assertNotEqual(args, None)
         self.assertEqual(args['CONFIG_FILE'], 'my_configuration.txt')
@@ -54,39 +54,41 @@ class Test_collect_chef_metadata(unittest.TestCase):
 
     def test_check_property_name_syntax(self):
         m = collect_chef_metadata.Metadata('dummy_signalfx_api_token')
-        self.assertTrue(m.checkPropertyNameSyntax("language_python"), True)
+        self.assertTrue(m.check_property_name_syntax("language_python"), True)
         self.assertTrue(
-        	m.checkPropertyNameSyntax("language_python3_version"), True)
+        	m.check_property_name_syntax("language_python3_version"), True)
         self.assertTrue(
-        	m.checkPropertyNameSyntax("language_python3-version"), True)
+        	m.check_property_name_syntax("language_python3-version"), True)
 
         self.assertFalse(
-        	m.checkPropertyNameSyntax("language.python"), False)
+        	m.check_property_name_syntax("language.python"), False)
         self.assertFalse(
-        	m.checkPropertyNameSyntax("9chef_environment"), False)
+        	m.check_property_name_syntax("9chef_environment"), False)
 
     def test_adjust_attribute_name(self):
-    	m = collect_chef_metadata.Metadata('dummy_signalfx_api_token')
+    	m = collect_chef_metadata.Metadata(
+    		SIGNALFX_API_TOKEN='dummy_signalfx_api_token', LOG_HANDLER='stdout')
     	self.assertEqual(
-    		m.adjustAttributeName('language.python'), 'chef_language_python')
+    		m.adjust_attribute_name('language.python'), 'chef_language_python')
     	self.assertEqual(
-    		m.adjustAttributeName('chef_environment'), 'chef_environment')
+    		m.adjust_attribute_name('chef_environment'), 'chef_environment')
 
     def test_get_attribute_value(self):
-    	m = collect_chef_metadata.Metadata('dummy_signalfx_api_token')
+    	m = collect_chef_metadata.Metadata(
+    		SIGNALFX_API_TOKEN='dummy_signalfx_api_token', LOG_HANDLER='stdout')
     	self.assertEqual(
-    		m.getAttributeValue('languages.python.version', {'languages':
+    		m.get_attribute_value('languages.python.version', {'languages':
 	    			{'python':
 	    				{'version':'2.7.8'
 	    				}
 	    			}
 	    		}), '2.7.8')
     	self.assertEqual(
-    		m.getAttributeValue('roles', {'roles':
+    		m.get_attribute_value('roles', {'roles':
     										['webserver', 'webcache']
     									 }), 'webserver$webcache')
     	self.assertEqual(
-    	m.getAttributeValue('languages.python', {'languages':
+    		m.get_attribute_value('languages.python', {'languages':
 	    			{'python':
 	    				{'version':'2.7.8'
 	    				}
