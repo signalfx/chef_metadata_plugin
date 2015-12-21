@@ -25,12 +25,12 @@ class Metadata(object):
 
     def __init__(self,
                  SIGNALFX_API_TOKEN,
-                 CONFIG_FILE,
-                 LOG_FILE,
-                 SIGNALFX_REST_API,
-                 PICKLE_FILE,
-                 SLEEP_DURATION,
-                 LOG_HANDLER):
+                 CONFIG_FILE=DEFAULT_CONFIG_FILE,
+                 LOG_FILE=DEFAULT_LOG_FILE,
+                 SIGNALFX_REST_API=DEFAULT_SIGNALFX_REST_API,
+                 PICKLE_FILE=DEFAULT_PICKLE_FILE,
+                 SLEEP_DURATION=DEFAULT_SLEEP_DURATION,
+                 LOG_HANDLER=DEFAULT_LOG_HANDLER):
         self.api = autoconfigure()
         self.SIGNALFX_API_TOKEN = SIGNALFX_API_TOKEN
         self.CONFIG_FILE = CONFIG_FILE
@@ -64,13 +64,13 @@ class Metadata(object):
         Save the metadata for future comparisions
         """
         self.nodes_metadata = []
-        self.readConfig()
-        self.collectMetadataFromChef()
+        self.read_config()
+        self.collect_metadata_from_chef()
         for nodeInformation in self.nodes_metadata:
-            self.sendMetadataToSignalfx(nodeInformation)
-        self.saveMetadata()
+            self.send_metadata_to_signalfx(nodeInformation)
+        self.save_metadata()
 
-    def saveMetadata(self):
+    def save_metadata(self):
         """
         Save the metadata as Python pickle
         """
@@ -83,7 +83,7 @@ class Metadata(object):
         self.logger.info('Saved updated metadata to ' + self.PICKLE_FILE)
         output.close()
 
-    def sendMetadataToSignalfx(self, nodeInformation):
+    def send_metadata_to_signalfx(self, nodeInformation):
         """
         Get ObjectID for the chefUniqueId dimension from Signalfx
         Check for changes between newly collected metadata and last run's data
@@ -150,7 +150,7 @@ class Metadata(object):
             self.exitNow()
         return resp
 
-    def readConfig(self):
+    def read_config(self):
         """
         Read the configuration file
         """
@@ -183,7 +183,7 @@ class Metadata(object):
         """
         Exit from the program with a message on the console
         """
-        print("Error Occured: logged into " + DEFAULT_LOG_FILE +
+        print("Error occured: logged into " + DEFAULT_LOG_FILE +
               "! Exiting...")
         sys.exit(1)
 
@@ -200,7 +200,7 @@ class Metadata(object):
             self.exitNow()
         return value
 
-    def collectMetadataFromChef(self):
+    def collect_metadata_from_chef(self):
         """
         Get the current organization name and its nodes
         Get the metadata for each node
@@ -235,6 +235,7 @@ class Metadata(object):
         and return it
         """
         attribute = attribute.replace('.', '_')
+        attribute = attribute.replace(' ', '')
         if not attribute.startswith('chef_'):
             attribute = 'chef_' + attribute
         return attribute

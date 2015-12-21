@@ -5,17 +5,6 @@ import os
 
 class Test_collect_chef_metadata(unittest.TestCase):
 
-    def test_SIGNALFX_API_TOKEN_IN_ENV(self):
-        """
-        Testing for the absense of SIGNALFX_API_TOKEN
-        in the environment variables.
-        We will get help on the stdout here.
-        """
-        with self.assertRaises(SystemExit) as cm:
-            collect_chef_metadata.main([])
-        self.assertEqual(cm.exception.code, 1)
-
-    # @unittest.skip("temporarily disabled")
     def test_argument_parser_for_default_parameters(self):
         """
         Check if the parser is correctly setting the default parameters
@@ -40,7 +29,6 @@ class Test_collect_chef_metadata(unittest.TestCase):
         self.assertEqual(args['LOG_HANDLER'],
                          collect_chef_metadata.DEFAULT_LOG_HANDLER)
 
-    # @unittest.skip("temporarily disabled")
     def test_argument_parser_for_custom_parameters(self):
         os.environ['MY_SIGNALFX_API_TOKEN'] = 'abcdefghijk'
         custom_argv = ['--config-file', 'my_configuration.txt',
@@ -63,6 +51,47 @@ class Test_collect_chef_metadata(unittest.TestCase):
         self.assertEqual(args['SLEEP_DURATION'], 10)
         self.assertEqual(args['ENV_VARIABLE_NAME'], 'MY_SIGNALFX_API_TOKEN')
         self.assertEqual(args['LOG_HANDLER'], 'stdout')
+
+    def test_check_property_name_syntax(self):
+        m = collect_chef_metadata.Metadata('dummy_signalfx_api_token')
+        self.assertTrue(m.checkPropertyNameSyntax("language_python"), True)
+        self.assertTrue(
+        	m.checkPropertyNameSyntax("language_python3_version"), True)
+        self.assertTrue(
+        	m.checkPropertyNameSyntax("language_python3-version"), True)
+
+        self.assertFalse(
+        	m.checkPropertyNameSyntax("language.python"), False)
+        self.assertFalse(
+        	m.checkPropertyNameSyntax("9chef_environment"), False)
+
+    def test_adjust_attribute_name(self):
+    	m = collect_chef_metadata.Metadata('dummy_signalfx_api_token')
+    	self.assertEqual(
+    		m.adjustAttributeName('language.python'), 'chef_language_python')
+    	self.assertEqual(
+    		m.adjustAttributeName('chef_environment'), 'chef_environment')
+
+    def test_get_attribute_value(self):
+    	m = collect_chef_metadata.Metadata('dummy_signalfx_api_token')
+    	self.assertEqual(
+    		m.getAttributeValue('languages.python.version', {'languages':
+	    			{'python':
+	    				{'version':'2.7.8'
+	    				}
+	    			}
+	    		}), '2.7.8')
+    	self.assertEqual(
+    		m.getAttributeValue('roles', {'roles':
+    										['webserver', 'webcache']
+    									 }), 'webserver$webcache')
+    	self.assertEqual(
+    	m.getAttributeValue('languages.python', {'languages':
+	    			{'python':
+	    				{'version':'2.7.8'
+	    				}
+	    			}
+	    		}), None)
 
 
 if __name__ == '__main__':
