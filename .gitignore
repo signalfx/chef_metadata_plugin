@@ -1,2 +1,3 @@
 *.pk
 .DS_Store
+*.pyc
